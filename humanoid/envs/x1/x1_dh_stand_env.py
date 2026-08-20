@@ -755,7 +755,10 @@ class X1DHStandEnv(LeggedRobot):
     def _reward_feet_clearance(self):
         """
         Calculates reward based on the clearance of the swing leg from the ground during movement.
-        Encourages appropriate lift of the feet during the swing phase of the gait.
+        exp1.1: graded continuous reward instead of the original hard window (0.03 < h < 0.06).
+        The binary window gave zero reward AND zero gradient for a foot that never lifts,
+        so the policy never learned to step. Now any lift earns credit proportional to
+        height, saturating at target_feet_height_max.
         """
         # Compute feet contact mask
         contact = self.contact_forces[:, self.feet_indices, 2] > 5.
@@ -769,11 +772,11 @@ class X1DHStandEnv(LeggedRobot):
         # Compute swing mask
         swing_mask = 1 - self._get_stance_mask()
 
-        # feet height should larger than target feet height at the peak
-        rew_pos = (self.feet_height > self.cfg.rewards.target_feet_height) * (self.feet_height < self.cfg.rewards.target_feet_height_max)
-        rew_pos = torch.sum(rew_pos * swing_mask, dim=1)
+        # graded: continuous credit for any lift, saturating at the target window max
+        h = self.feet_height.clamp(0, self.cfg.rewards.target_feet_height_max)
+        rew = (h / self.cfg.rewards.target_feet_height_max) * swing_mask
         self.feet_height *= ~contact
-        return rew_pos
+        return rew.sum(dim=1)
 
     def _reward_low_speed(self):
         """

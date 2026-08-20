@@ -319,8 +319,9 @@ class X1DHStandCfg(LeggedRobotCfg):
         cycle_time = 0.7
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
-        # tracking reward = exp(-error*sigma)
-        tracking_sigma = 5 
+        # tracking reward = exp(-error*sigma)；低速模型 ±0.2 下需更陡的核：
+        # sigma=5 时站着不动仍拿 82% 奖励，sigma=15 降到 55%，拉开跟踪拉力
+        tracking_sigma = 15
         max_contact_force = 700  # forces above this value are penalized
         
         class scales:
@@ -338,7 +339,7 @@ class X1DHStandCfg(LeggedRobotCfg):
             tracking_lin_vel = 1.8
             tracking_ang_vel = 1.1
             vel_mismatch_exp = 0.5  # lin_z; ang x,y
-            low_speed = 0.2
+            low_speed = 0.5 # exp1.1: 0.2→0.5，加强"速度太慢"罚的拉力
             track_vel_hard = 0.5
             # base pos
             default_joint_pos = 1.0
