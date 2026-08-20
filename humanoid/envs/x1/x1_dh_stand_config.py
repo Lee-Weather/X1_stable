@@ -312,11 +312,14 @@ class X1DHStandCfg(LeggedRobotCfg):
         foot_max_dist = 1.0
 
         # final_swing_joint_pos = final_swing_joint_delta_pos + default_pos
-        final_swing_joint_delta_pos = [0.25, 0.05, -0.11, 0.35, -0.16, 0.0, -0.25, -0.05, 0.11, 0.35, -0.16, 0.0]
-        target_feet_height = 0.03 
-        target_feet_height_max = 0.06
+        # exp2: 参考摆幅加大（hip 0.25->0.30, knee 0.35->0.45），短周期下引导 6cm+ 抬腿
+        final_swing_joint_delta_pos = [0.30, 0.05, -0.11, 0.45, -0.16, 0.0, -0.30, -0.05, 0.11, 0.45, -0.16, 0.0]
+        # exp2: 抬腿目标窗整体上移（分级奖励饱和点 0.06->0.08），目标峰值 >=6cm
+        target_feet_height = 0.05
+        target_feet_height_max = 0.08
         feet_to_ankle_distance = 0.041
-        cycle_time = 0.7
+        # exp2: 步态周期 0.7 -> 0.58（2.86 -> 3.45 步/s），相位/参考/sim2sim 自动跟随
+        cycle_time = 0.58
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
         # tracking reward = exp(-error*sigma)；低速模型 ±0.2 下需更陡的核：
@@ -326,7 +329,7 @@ class X1DHStandCfg(LeggedRobotCfg):
         
         class scales:
             ref_joint_pos = 2.2
-            feet_clearance = 1.
+            feet_clearance = 2.5 # exp2: 1.0->2.5，补偿短周期下摆动积分变少的得分难度
             feet_contact_number = 2.0
             # gait
             feet_air_time = 1.2
