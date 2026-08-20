@@ -49,7 +49,7 @@ VEL_PROFILE = [
     (500, 0.0, 0.0),   # stop, keep stepping
     (500, 0.0, 0.6),   # in-place turning (left, 0.6 rad/s) while stepping
 ]
-TOTAL_STEPS = sum(steps for steps, _ in VEL_PROFILE)
+TOTAL_STEPS = sum(steps for steps, _, _ in VEL_PROFILE)
 
 RENDER = True
 FIX_COMMAND = True
