@@ -277,26 +277,29 @@ class X1DHStandCfg(LeggedRobotCfg):
         joint_viscous_range = [0.05, 0.1]
         
     class commands(LeggedRobotCfg.commands):
-        curriculum = True
-        max_curriculum = 1.5
+        # 低速过渡模型：命令范围固定在 ±0.2 m/s，不做课程扩展
+        curriculum = False
         # Vers: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
         num_commands = 4
         resampling_time = 25.  # time before command are changed[s]
-        gait = ["walk_omnidirectional","stand","walk_omnidirectional"] # gait type during training
+        # 短片段 walk/stand 交替：每个 24 s episode 内产生 7 次速度切换，
+        # 专门训练 0 <-> ±0.2 m/s 的急加/减速过渡
+        gait = ["walk_omnidirectional","stand","walk_omnidirectional","stand",
+                "walk_omnidirectional","stand","walk_omnidirectional","stand"]
         # proportion during whole life time
         gait_time_range = {"walk_sagittal": [2,6],
                            "walk_lateral": [2,6],
                            "rotate": [2,3],
-                           "stand": [2,3],
-                           "walk_omnidirectional": [4,6]}
+                           "stand": [1.5,2.5],
+                           "walk_omnidirectional": [2,3]}
 
         heading_command = False  # if true: compute ang vel command from heading error
         stand_com_threshold = 0.05 # if (lin_vel_x, lin_vel_y, ang_vel_yaw).norm < this, robot should stand
-        sw_switch = True # use stand_com_threshold or not
+        sw_switch = False # 原地踏步：零命令时相位不冻结，持续迈步（相位全程连续）
 
         class ranges:
-            lin_vel_x = [-0.4, 1.2] # min max [m/s] 
-            lin_vel_y = [-0.4, 0.4]   # min max [m/s]
+            lin_vel_x = [-0.2, 0.2] # min max [m/s] 低速过渡区间
+            lin_vel_y = [-0.2, 0.2]   # min max [m/s]
             ang_vel_yaw = [-0.6, 0.6]    # min max [rad/s]
             heading = [-3.14, 3.14]
 
@@ -349,7 +352,7 @@ class X1DHStandCfg(LeggedRobotCfg):
             dof_vel = -2e-8
             dof_acc = -1e-7
             collision = -1.
-            stand_still = 2.5
+            stand_still = 0.0 # 原地踏步模型：零命令时持续迈步，不奖励静止贴默认姿态
             # limits
             dof_vel_limits = -1
             dof_pos_limits = -10.

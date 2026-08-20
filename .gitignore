@@ -54,6 +54,9 @@ Thumbs.db
 logs
 runs
 
+# czy 工作区：含 skills 凭据、实验记录（GM账号）与数据归档，不进 git
+czy/
+
 # other
 *.egg-info
 __pycache__

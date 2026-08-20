@@ -572,11 +572,8 @@ class X1DHStandEnv(LeggedRobot):
         """
         joint_pos = self.dof_pos.clone()
         pos_target = self.ref_dof_pos.clone()
-        stand_command = (torch.norm(self.commands[:, :3], dim=1) <= self.cfg.commands.stand_com_threshold)
-        pos_target[stand_command] = self.default_dof_pos.clone()
         diff = joint_pos - pos_target
         r = torch.exp(-2 * torch.norm(diff, dim=1)) - 0.2 * torch.norm(diff, dim=1).clamp(0, 0.5)
-        r[stand_command] = 1.0
         return r
     
     def _reward_feet_distance(self):
@@ -639,7 +636,6 @@ class X1DHStandEnv(LeggedRobot):
         """
         contact = self.contact_forces[:, self.feet_indices, 2] > 5.
         stance_mask = self._get_stance_mask().clone()
-        stance_mask[torch.norm(self.commands[:, :3], dim=1) <= self.cfg.commands.stand_com_threshold] = 1
         reward = torch.where(contact == stance_mask, 1, -0.3)
         return torch.mean(reward, dim=1)
 
