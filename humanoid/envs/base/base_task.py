@@ -58,8 +58,10 @@ class BaseTask():
             self.device = 'cpu'
 
         # graphics device for rendering, -1 for no rendering
+        # enable_headless_render=True keeps GPU rendering alive under --headless
+        # (camera sensors still render offscreen -> usable video), while no viewer is created
         self.graphics_device_id = self.sim_device_id
-        if self.headless == True:
+        if self.headless == True and not getattr(cfg.env, 'enable_headless_render', False):
             self.graphics_device_id = -1
 
         self.num_envs = cfg.env.num_envs
