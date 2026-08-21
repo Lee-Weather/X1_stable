@@ -192,6 +192,9 @@ def play(args):
     env_cfg.commands.heading_command = False
     env_cfg.noise.curriculum = False
     train_cfg.seed = 12345
+    # exp2.1: 回放直接使用最终周期 cycle_time（0.58），不做周期退火
+    if hasattr(env_cfg.rewards, "cycle_time_start"):
+        env_cfg.rewards.cycle_time_start = None
 
     # Locate checkpoint: explicit --load_run/--checkpoint > --checkpoint_url_b64 download > latest local
     if args.load_run and args.checkpoint:

@@ -320,6 +320,10 @@ class X1DHStandCfg(LeggedRobotCfg):
         feet_to_ankle_distance = 0.041
         # exp2: 步态周期 0.7 -> 0.58（2.86 -> 3.45 步/s），相位/参考/sim2sim 自动跟随
         cycle_time = 0.58
+        # exp2.1: 周期退火——前 cycle_anneal_iters 轮从 exp1.1 稳定点 0.7 线性退火到 0.58
+        # （exp2 从零训练落入半频陷阱 1.18s；退火让相位速度渐变，策略跟随提频）
+        cycle_time_start = 0.7
+        cycle_anneal_iters = 500
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
         # tracking reward = exp(-error*sigma)；低速模型 ±0.2 下需更陡的核：
@@ -328,9 +332,9 @@ class X1DHStandCfg(LeggedRobotCfg):
         max_contact_force = 700  # forces above this value are penalized
         
         class scales:
-            ref_joint_pos = 2.2
-            feet_clearance = 2.5 # exp2: 1.0->2.5，补偿短周期下摆动积分变少的得分难度
-            feet_contact_number = 2.0
+            ref_joint_pos = 3.0 # exp2.1: 2.2->3.0，加强相位参考跟踪，对抗回放半频失锁
+            feet_clearance = 1.5 # exp2.1: 2.5->1.5，10cm 抬腿由大摆幅参考物理保证，权重过大诱导牺牲平衡
+            feet_contact_number = 2.5 # exp2.1: 2.0->2.5，支撑-相位一致性是时序硬约束，加强对付半频
             # gait
             feet_air_time = 1.2
             foot_slip = -0.1
@@ -346,7 +350,7 @@ class X1DHStandCfg(LeggedRobotCfg):
             track_vel_hard = 0.5
             # base pos
             default_joint_pos = 1.0
-            orientation = 1.
+            orientation = 1.2 # exp2.1: 1.0->1.2，快频下平衡拉力稍增对冲
             feet_rotation = 0.3
             base_height = 0.2
             base_acc = 0.2
@@ -407,7 +411,7 @@ class X1DHStandCfgPPO(LeggedRobotCfgPPO):
         policy_class_name = 'ActorCriticDH'
         algorithm_class_name = 'DHPPO'
         num_steps_per_env = 24  # per iteration
-        max_iterations = 3000  # number of policy updates
+        max_iterations = 5000  # exp2.1: resume 微调至 5000
 
         # logging
         save_interval = 100  # check for potential saves every this many iterations

@@ -31,8 +31,41 @@
 # Copyright (c) 2024, AgiBot Inc. All rights reserved.
 
 
+import os
+import re
+import sys
+import base64
+import subprocess
+
+from humanoid import LEGGED_GYM_ROOT_DIR
 from humanoid.envs import *
 from humanoid.utils import get_args, task_registry
+
+
+def extract_checkpoint_url_b64(argv):
+    """Pop --checkpoint_url_b64=<url-safe-b64> from argv (unknown to get_args)."""
+    prefix = "--checkpoint_url_b64="
+    for i, a in enumerate(argv):
+        if a.startswith(prefix):
+            argv.pop(i)
+            padded = a[len(prefix):]
+            padded += "=" * (-len(padded) % 4)
+            return base64.urlsafe_b64decode(padded).decode("utf-8")
+    return None
+
+
+def download_checkpoint_for_resume(url, load_run, checkpoint):
+    """exp2.1 GM resume: 把签名 OSS checkpoint 下载到 get_load_path 期望的 exported_data 布局。"""
+    resume_dir = os.path.join(LEGGED_GYM_ROOT_DIR, "logs", "x1_dh_stand", "exported_data", load_run)
+    os.makedirs(resume_dir, exist_ok=True)
+    dest = os.path.join(resume_dir, "model_{}.pt".format(checkpoint))
+    print("[train] Downloading resume checkpoint -> {}".format(dest))
+    result = subprocess.run(["curl", "-L", "--retry", "3", "-o", dest, url],
+                            capture_output=True, text=True, timeout=300)
+    if result.returncode != 0 or not os.path.exists(dest) or os.path.getsize(dest) < 1_000_000:
+        raise RuntimeError("checkpoint download failed: rc={} {}".format(result.returncode, result.stderr[:200]))
+    print("[train] Downloaded {} bytes".format(os.path.getsize(dest)))
+
 
 def train(args):
     env, env_cfg = task_registry.make_env(name=args.task, args=args)
@@ -40,5 +73,14 @@ def train(args):
     ppo_runner.learn(num_learning_iterations=train_cfg.runner.max_iterations, init_at_random_ep_len=False)
 
 if __name__ == '__main__':
+    url = extract_checkpoint_url_b64(sys.argv)
     args = get_args()
+    if url:
+        # exp2.1 GM resume: 平台经签名 URL 交付 checkpoint（挂载不可靠），运行时下载后走常规 --resume
+        if not args.load_run:
+            args.load_run = "gm_resume"
+        if args.checkpoint is None or args.checkpoint < 0:
+            m = re.search(r"model_(\d+)", url)
+            args.checkpoint = int(m.group(1)) if m else 3000
+        download_checkpoint_for_resume(url, args.load_run, args.checkpoint)
     train(args)

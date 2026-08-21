@@ -133,8 +133,19 @@ class X1DHStandEnv(LeggedRobot):
         self.gym.set_actor_root_state_tensor(
             self.sim, gymtorch.unwrap_tensor(self.root_states))
 
+    def _get_cycle_time(self):
+        # exp2.1: 周期课程——前 cycle_anneal_iters 轮从 cycle_time_start（exp1.1 稳定点 0.7）
+        # 线性退火到 cycle_time（0.58），避免频率跳变把策略甩出稳定域。
+        # 回放/部署时由 play 脚本置 cycle_time_start=None 直接使用终值。
+        start = getattr(self.cfg.rewards, 'cycle_time_start', None)
+        if start is None:
+            return self.cfg.rewards.cycle_time
+        anneal_steps = self.cfg.rewards.cycle_anneal_iters * 24  # num_steps_per_env=24
+        ratio = min(self.common_step_counter / max(anneal_steps, 1), 1.0)
+        return start + ratio * (self.cfg.rewards.cycle_time - start)
+
     def  _get_phase(self):
-        cycle_time = self.cfg.rewards.cycle_time
+        cycle_time = self._get_cycle_time()
         if self.cfg.commands.sw_switch:
             stand_command = (torch.norm(self.commands[:, :3], dim=1) <= self.cfg.commands.stand_com_threshold)
             self.phase_length_buf[stand_command] = 0 # set this as 0 for which env is standing
@@ -625,7 +636,7 @@ class X1DHStandEnv(LeggedRobot):
         self.last_contacts = contact
         first_contact = (self.feet_air_time > 0.) * self.contact_filt
         self.feet_air_time += self.dt
-        air_time = self.feet_air_time.clamp(0, 0.5) * first_contact
+        air_time = self.feet_air_time.clamp(0, 0.3) * first_contact  # exp2.1: 0.5->0.3，半频步（摆动~0.5s）不再拿满奖励
         self.feet_air_time *= ~self.contact_filt
         return air_time.sum(dim=1)
 
