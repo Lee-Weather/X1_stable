@@ -313,17 +313,19 @@ class X1DHStandCfg(LeggedRobotCfg):
 
         # final_swing_joint_pos = final_swing_joint_delta_pos + default_pos
         # exp2: 参考摆幅加大（hip 0.25->0.30, knee 0.35->0.45），短周期下引导 6cm+ 抬腿
-        final_swing_joint_delta_pos = [0.30, 0.05, -0.11, 0.45, -0.16, 0.0, -0.30, -0.05, 0.11, 0.45, -0.16, 0.0]
+        # exp3: 摆幅回调（hip 0.30->0.27, knee 0.45->0.35）——0.35s 周期下峰值角速度
+        # knee 0.45 需 8.08 rad/s 超 URDF 硬限 8.0；0.27/0.35 对应 4.85/6.28 rad/s（67%/87% soft limit）
+        final_swing_joint_delta_pos = [0.27, 0.05, -0.11, 0.35, -0.16, 0.0, -0.27, -0.05, 0.11, 0.35, -0.16, 0.0]
         # exp2: 抬腿目标窗整体上移（分级奖励饱和点 0.06->0.08），目标峰值 >=6cm
         target_feet_height = 0.05
         target_feet_height_max = 0.08
         feet_to_ankle_distance = 0.041
-        # exp2: 步态周期 0.7 -> 0.58（2.86 -> 3.45 步/s），相位/参考/sim2sim 自动跟随
-        cycle_time = 0.58
-        # exp2.1: 周期退火——前 cycle_anneal_iters 轮从 exp1.1 稳定点 0.7 线性退火到 0.58
-        # （exp2 从零训练落入半频陷阱 1.18s；退火让相位速度渐变，策略跟随提频）
-        cycle_time_start = 0.7
-        cycle_anneal_iters = 500
+        # exp3: 步态周期 0.58 -> 0.35（1.72 -> 2.86 步/s），相位/参考/sim2sim 自动跟随
+        cycle_time = 0.35
+        # exp3: 周期退火——从 exp2.1 稳定点 0.58 退火到 0.35（幅度 40%，上轮 17%），
+        # anneal 翻倍到 1000 轮防频率跳变甩出稳定域
+        cycle_time_start = 0.58
+        cycle_anneal_iters = 1000
         # if true negative total rewards are clipped at zero (avoids early termination problems)
         only_positive_rewards = True
         # tracking reward = exp(-error*sigma)；低速模型 ±0.2 下需更陡的核：
